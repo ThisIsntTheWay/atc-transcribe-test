@@ -9,12 +9,11 @@ MODEL_SIZE=base # tiny,large
 docker run --rm -it -e MODEL_SIZE=$MODEL_SIZE atc-transcript:latest
 ```
 
-Or, without docker:
+Or, without docker (needs [uv](https://docs.astral.sh/uv/getting-started/installation/)):
 ```bash
 sudo apt install ffmpeg -y
-python3 -m venv venv
-source ./venv/bin/activate
-pip install -r requirements.txt
+uv sync
+uv run python main.py
 ```
 
 ### Env vars
