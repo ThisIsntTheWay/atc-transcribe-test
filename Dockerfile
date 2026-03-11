@@ -2,12 +2,14 @@ FROM ghcr.io/astral-sh/uv:python3.13-trixie
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+
 ENV MODEL_SIZE=base
 ENV STREAM_URL=https://d.liveatc.net/lszb2_atis
+ENV UV_COMPILE_BYTECODE=1
 
-RUN apt update && apt install -y ffmpeg
+COPY pyproject.toml uv.lock* ./
+RUN uv sync --no-dev
 
-COPY pyproject.toml main.py ./
-RUN uv sync
-
+COPY main.py ./
 CMD ["uv", "run", "python", "/app/main.py"]
