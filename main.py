@@ -4,10 +4,11 @@ import time
 import sys
 import logging
 from faster_whisper import WhisperModel
+import os
 
 # --- Configuration ---
-STREAM_URL = "https://d.liveatc.net/lszb2_atis"
-MODEL_SIZE = "base"
+STREAM_URL = os.getenv("STREAM_URL", "https://d.liveatc.net/lszb2_atis")
+MODEL_SIZE = os.getenv("MODEL_SIZE", "base")
 # 10 seconds of audio buffer (16k samples * 4 bytes/sample * 10s)
 CHUNK_SIZE = 16000 * 4 * 10 
 
