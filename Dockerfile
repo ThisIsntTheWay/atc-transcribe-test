@@ -10,4 +10,4 @@ RUN apt update && apt install -y ffmpeg
 COPY pyproject.toml main.py ./
 RUN uv sync
 
-CMD ["python", "/app/main.py"]
+CMD ["uv", "run", "python", "/app/main.py"]
