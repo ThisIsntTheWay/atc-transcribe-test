@@ -1,12 +1,13 @@
-FROM python:3.14.3-slim
+FROM ghcr.io/astral-sh/uv:python3.13-trixie
 
 WORKDIR /app
-COPY main.py requirements.txt ./
 
 ENV MODEL_SIZE=base
 ENV STREAM_URL=https://d.liveatc.net/lszb2_atis
 
-RUN apt-get update && apt-get install -y ffmpeg && apt-get clean
-RUN pip install -r requirements.txt
+RUN apt update && apt install -y ffmpeg
 
-CMD ["/app/main.py"]
+COPY pyproject.toml main.py ./
+RUN uv sync
+
+CMD ["python", "/app/main.py"]
