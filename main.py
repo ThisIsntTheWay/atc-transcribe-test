@@ -46,6 +46,7 @@ process = start_stream()
 
 while True:
     try:
+        logger.info("reading streaming...")
         # Read raw bytes
         in_bytes = process.stdout.read(CHUNK_SIZE)
 
@@ -73,14 +74,14 @@ while True:
         processing_time = time.time() - processing_start
 
         # Store audio + transcript
-        #timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        #file_id = f"{timestamp}_{str(uuid.uuid4()).split('-')[0]}"
-        #wav_filename = os.path.join(OUTPUT_DIR, f"{file_id}.wav")
-        #txt_filename = os.path.join(OUTPUT_DIR, f"{file_id}.txt")
-        #
-        #scipy.io.wavfile.write(wav_filename, 16000, audio_chunk)
-        #with open(txt_filename, "w", encoding="utf-8") as f:
-        #    f.write(transcript_text)
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_id = f"{timestamp}_{str(uuid.uuid4()).split('-')[0]}"
+        wav_filename = os.path.join(OUTPUT_DIR, f"{file_id}.wav")
+        txt_filename = os.path.join(OUTPUT_DIR, f"{file_id}.txt")
+        
+        scipy.io.wavfile.write(wav_filename, 16000, audio_chunk)
+        with open(txt_filename, "w", encoding="utf-8") as f:
+            f.write(transcript_text)
 
         if transcript_text:
             print(f">>> ({round(processing_time, 2)}s) {transcript_text}")
