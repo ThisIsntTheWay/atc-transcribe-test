@@ -11,10 +11,10 @@ import scipy.io.wavfile
 
 # --- Configuration ---
 STREAM_URL = os.getenv("STREAM_URL", "https://d.liveatc.net/lszb2_atis")
-MODEL_SIZE = os.getenv("MODEL_SIZE", "base")
+MODEL_SIZE = os.getenv("MODEL_SIZE", "distil-medium.en")
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "recordings")
-# 10 seconds of audio buffer (16k samples * 4 bytes/sample * 10s)
-CHUNK_SIZE = 16000 * 4 * 10 
+# audio buffer (16k samples * 4 bytes/sample * N seconds)
+CHUNK_SIZE = 16000 * 4 * 30 
 
 # --- Logging Setup ---
 logging.basicConfig(
@@ -56,30 +56,33 @@ while True:
             process = start_stream()
             continue
 
-        # Convert to numpy
         audio_chunk = np.frombuffer(in_bytes, np.float32)
-
-        # Log start of processing
         logger.debug("Starting transcription on audio chunk...")
 
         # Transcribe
+        processing_start = time.time()
         segments, _ = model.transcribe(
             audio_chunk,
             vad_filter=True,
-            vad_parameters=dict(min_silence_duration_ms=700),
-            no_speech_threshold=0.6,
+            vad_parameters=dict(min_silence_duration_ms=500),
+            beam_size=7,
+            best_of=5,
             language="en",
-            temperature=0.2,
-            initial_prompt="Bern Airport, LSZB, ATIS, Information, QNH, runway"
+            temperature=0,
+            initial_prompt=(
+                "Bern, LSZB, ATIS, Information, QNH, runway, wind, "
+                "visibility, clouds, temperature, dewpoint, transition level, "
+                "nosig, trend, degrees, knots."
+            )
         )
 
-        # post-process
         transcript_text = ""
         for segment in segments:
             if segment.text.strip():
                 transcript_text += segment.text.strip() + " "
         
         transcript_text = transcript_text.strip()
+        processing_time = time.time() - processing_start
 
         # Store audio + transcript
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -92,13 +95,12 @@ while True:
             f.write(transcript_text)
 
         if transcript_text:
-            print(f">>> {transcript_text}")
+            print(f">>> ({round(processing_time, 2)}s) {transcript_text}")
         else:
             logger.info(f"Heartbeat: Monitoring... (Silence/Static detected) - Saved as {file_id}")
 
     except Exception as e:
         logger.error(f"Error during processing loop: {e}")
-        # Reset stream on error to be safe
         process.terminate()
         time.sleep(2)
         process = start_stream()
