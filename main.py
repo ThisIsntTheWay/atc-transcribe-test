@@ -5,10 +5,14 @@ import sys
 import logging
 from faster_whisper import WhisperModel
 import os
+import datetime
+import uuid
+import scipy.io.wavfile
 
 # --- Configuration ---
 STREAM_URL = os.getenv("STREAM_URL", "https://d.liveatc.net/lszb2_atis")
 MODEL_SIZE = os.getenv("MODEL_SIZE", "base")
+OUTPUT_DIR = os.getenv("OUTPUT_DIR", "recordings")
 # 10 seconds of audio buffer (16k samples * 4 bytes/sample * 10s)
 CHUNK_SIZE = 16000 * 4 * 10 
 
@@ -24,6 +28,9 @@ logger = logging.getLogger("ATC_Monitor")
 logger.info(f"Loading Faster Whisper model: {MODEL_SIZE}...")
 model = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8")
 logger.info("Model loaded successfully.")
+
+# --- Create output directory ---
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 def start_stream():
     """Starts the FFmpeg process to pipe audio."""
@@ -61,19 +68,33 @@ while True:
             vad_filter=True,
             vad_parameters=dict(min_silence_duration_ms=700),
             no_speech_threshold=0.6,
+            language="en",
+            temperature=0.2,
             initial_prompt="Bern Airport, LSZB, ATIS, Information, QNH, runway"
         )
 
-        # Process results
-        found_speech = False
+        # post-process
+        transcript_text = ""
         for segment in segments:
             if segment.text.strip():
-                # Actual transcription log
-                print(f">>> {segment.text.strip()}")
-                found_speech = True
+                transcript_text += segment.text.strip() + " "
+        
+        transcript_text = transcript_text.strip()
 
-        if not found_speech:
-            logger.info("Heartbeat: Monitoring... (Silence/Static detected)")
+        # Store audio + transcript
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_id = f"{timestamp}_{str(uuid.uuid4()).split('-')[0]}"
+        wav_filename = os.path.join(OUTPUT_DIR, f"{file_id}.wav")
+        txt_filename = os.path.join(OUTPUT_DIR, f"{file_id}.txt")
+
+        scipy.io.wavfile.write(wav_filename, 16000, audio_chunk)
+        with open(txt_filename, "w", encoding="utf-8") as f:
+            f.write(transcript_text)
+
+        if transcript_text:
+            print(f">>> {transcript_text}")
+        else:
+            logger.info(f"Heartbeat: Monitoring... (Silence/Static detected) - Saved as {file_id}")
 
     except Exception as e:
         logger.error(f"Error during processing loop: {e}")

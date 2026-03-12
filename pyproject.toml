@@ -6,6 +6,7 @@ dependencies = [
     "faster-whisper",
     "ffmpeg-python",
     "numpy>=1.24.0",
+    "scipy",
     "silero-vad>=4.0",
     "torch",
 ]
