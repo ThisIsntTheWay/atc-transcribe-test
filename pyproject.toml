@@ -9,6 +9,7 @@ dependencies = [
     "scipy",
     "silero-vad>=4.0",
     "torch",
+    "onnx-asr[cpu,hub]",
 ]
 
 [tool.uv.sources]

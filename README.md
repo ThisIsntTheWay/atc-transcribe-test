@@ -17,7 +17,7 @@ uv run python main.py
 ```
 
 ### Env vars
-- `MODEL_SIZE`
+- `MODEL`
   - Can be set to any of the [whisper models](https://github.com/openai/whisper?tab=readme-ov-file#available-models-and-languages).
 - `STREAM_URL`
   - Can be set to any mp3 stream

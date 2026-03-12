@@ -11,5 +11,7 @@ ENV UV_COMPILE_BYTECODE=1
 COPY pyproject.toml uv.lock* ./
 RUN uv sync --no-dev
 
+VOLUME ["/root/.cache/huggingface"]
+
 COPY main.py ./
 CMD ["uv", "run", "python", "/app/main.py"]

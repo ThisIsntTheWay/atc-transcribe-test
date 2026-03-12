@@ -3,7 +3,7 @@ import numpy as np
 import time
 import sys
 import logging
-from faster_whisper import WhisperModel
+import onnx_asr
 import os
 import datetime
 import uuid
@@ -11,7 +11,7 @@ import scipy.io.wavfile
 
 # --- Configuration ---
 STREAM_URL = os.getenv("STREAM_URL", "https://d.liveatc.net/lszb2_atis")
-MODEL_SIZE = os.getenv("MODEL_SIZE", "distil-medium.en")
+MODEL = os.getenv("MODEL", "nemo-parakeet-tdt-0.6b-v3")
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "recordings")
 # audio buffer (16k samples * 4 bytes/sample * N seconds)
 CHUNK_SIZE = 16000 * 4 * 30 
@@ -25,8 +25,8 @@ logging.basicConfig(
 logger = logging.getLogger("ATC_Monitor")
 
 # --- Initialize Model ---
-logger.info(f"Loading Faster Whisper model: {MODEL_SIZE}...")
-model = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8")
+logger.info(f"Loading ONNX ASR model: {MODEL}...")
+model = onnx_asr.load_model(MODEL)
 logger.info("Model loaded successfully.")
 
 # --- Create output directory ---
@@ -61,38 +61,26 @@ while True:
 
         # Transcribe
         processing_start = time.time()
-        segments, _ = model.transcribe(
-            audio_chunk,
-            vad_filter=True,
-            vad_parameters=dict(min_silence_duration_ms=500),
-            beam_size=7,
-            best_of=5,
-            language="en",
-            temperature=0,
-            initial_prompt=(
-                "Bern, LSZB, ATIS, Information, QNH, runway, wind, "
-                "visibility, clouds, temperature, dewpoint, transition level, "
-                "nosig, trend, degrees, knots."
-            )
-        )
-
-        transcript_text = ""
-        for segment in segments:
-            if segment.text.strip():
-                transcript_text += segment.text.strip() + " "
+        result = model.recognize(audio_chunk, language="en")
         
-        transcript_text = transcript_text.strip()
+        # Extract text from result
+        if isinstance(result, dict):
+            transcript_text = result.get("text", "").strip()
+        elif isinstance(result, str):
+            transcript_text = result.strip()
+        else:
+            transcript_text = getattr(result, "text", "").strip()
         processing_time = time.time() - processing_start
 
         # Store audio + transcript
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_id = f"{timestamp}_{str(uuid.uuid4()).split('-')[0]}"
-        wav_filename = os.path.join(OUTPUT_DIR, f"{file_id}.wav")
-        txt_filename = os.path.join(OUTPUT_DIR, f"{file_id}.txt")
-
-        scipy.io.wavfile.write(wav_filename, 16000, audio_chunk)
-        with open(txt_filename, "w", encoding="utf-8") as f:
-            f.write(transcript_text)
+        #timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        #file_id = f"{timestamp}_{str(uuid.uuid4()).split('-')[0]}"
+        #wav_filename = os.path.join(OUTPUT_DIR, f"{file_id}.wav")
+        #txt_filename = os.path.join(OUTPUT_DIR, f"{file_id}.txt")
+        #
+        #scipy.io.wavfile.write(wav_filename, 16000, audio_chunk)
+        #with open(txt_filename, "w", encoding="utf-8") as f:
+        #    f.write(transcript_text)
 
         if transcript_text:
             print(f">>> ({round(processing_time, 2)}s) {transcript_text}")
